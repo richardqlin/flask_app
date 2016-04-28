@@ -1,11 +1,15 @@
-from flask import Flask,session, flash,render_template,redirect,request,url_for
+from flask import Flask,session, g, flash,render_template,redirect,request,url_for
 from functools import wraps
+from flask.ext.sqlalchemy import SQLAlchemy
 import sqlite3
 
 app=Flask(__name__)
 app.secret_key='secret_key'
 app.database='sample.db'
 
+#app.config['SQLAlchemy_DATABASE_URL']='sqlite:///posts.db'
+
+#db=SQLAlchemy
 
 def login_required(f):
 	@wraps(f)
@@ -23,22 +27,22 @@ def connect_db():
 @app.route('/')
 @login_required
 def home():
-	g=connect_db()
-	cur=g.execute('select * from posts')
-	posts=[]
-	for row in cur.fetchall():
-		posts.append(dict(title=row[0],description=row[1]))
-	#print posts
-	
-	#posts=[dict(title=row[0],description=row[1]) for row in cur.fetchall()]
-	
-	g.close()	
+	g.db=connect_db()
+	try:
+		cur=g.db.execute('select * from posts')
+		posts=[]
+		for row in cur.fetchall():
+			posts.append(dict(title=row[0],description=row[1]))
+		#posts=[dict(title=row[0],description=row[1]) for row in cur.fetchall()]
+		g.db.close()
+	except sqlite3.OperationalError:
+		flash("You have no database!")
+
 	return render_template('index.html',posts=posts)
 
 
 @app.route('/welcome')
-def welcome():
-	
+def welcome():	
 	return render_template('welcome.html')
 
 @app.route('/login', methods=['GET','POST'])
